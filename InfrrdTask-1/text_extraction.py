@@ -7,6 +7,8 @@ def extract_text(file_path):
         return extract_text_from_pdf(file_path)
     elif file_path.endswith((".jpg", ".jpeg", ".png")):
         return extract_text_from_image(file_path)
+    elif file_path.endswith(".txt"):
+        return extract_text_from_txt(file_path)
     else:
         raise ValueError("Unsupported file format")
 
@@ -20,3 +22,8 @@ def extract_text_from_pdf(file_path):
 def extract_text_from_image(file_path):
     with Image.open(file_path) as img:
         return pytesseract.image_to_string(img)
+        
+def extract_text_from_txt(file_path):
+    """Extract text from a plain text file."""
+    with open(file_path, 'r', encoding='utf-8') as file:
+        return file.read()

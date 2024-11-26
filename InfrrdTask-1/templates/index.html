@@ -34,7 +34,7 @@
         input[type="file"],
         input[type="text"] {
             width: 100%;
-            padding: px;
+            padding: 10px;
             margin-bottom: 16px;
             border: 1px solid #ccc;
             border-radius: 4px;
@@ -42,7 +42,7 @@
         button {
             width: 100%;
             padding: 10px;
-            background-color: #007bff;
+            background-color: #13c24b;
             color: #fff;
             border: none;
             border-radius: 4px;
@@ -50,7 +50,7 @@
             cursor: pointer;
         }
         button:hover {
-            background-color: #0056b3;
+            background-color:#027d29 ;
         }
     </style>
 </head>
@@ -66,12 +66,27 @@
             <button type="submit">Upload</button>
         </form>
 
+        <!-- Generate Embeddings Form -->
+        <form id="generateEmbeddingsForm" method="POST" action="/generate-embeddings">
+            <label for="docID">Enter Document ID:</label>
+            <input type="text" id="docID" name="doc_id" placeholder="Enter Document ID" required>
+            <button type="submit">Generate Embeddings</button>
+        </form>
+
         <!-- Search Form -->
         <form id="searchForm" method="GET" action="/search">
             <label for="query">Search Keyword:</label>
             <input type="text" id="query" name="query" placeholder="Enter search term" required>
             <button type="submit">Search</button>
         </form>
+
+        <!-- Image Processing Form -->
+        <form id="imageProcessingForm" method="POST" action="/image-processing" enctype="multipart/form-data">
+            <label for="imageFile">Upload Image for Processing:</label>
+            <input type="file" id="imageFile" name="file" required>
+            <button type="submit">Process Image</button>
+        </form>
     </div>
 </body>
 </html>
+

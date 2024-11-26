@@ -1,11 +1,15 @@
 from flask import Flask, request, jsonify, render_template
 from flask_restful import Api, Resource
-from dotenv import load_dotenv
 from pymongo import MongoClient
+from dotenv import load_dotenv
 import os
 from werkzeug.utils import secure_filename
 from text_extraction import extract_text
-from sentence_transformers import SentenceTransformer, util
+from image_processing import process_image
+from search_service import generate_embeddings, perform_search
+from sentence_transformers import SentenceTransformer
+from sentence_transformers import util
+
 import uuid
 
 # Load environment variables
@@ -59,57 +63,65 @@ class UploadAPI(Resource):
         except Exception as e:
             return {"message": f"Error processing file: {str(e)}"}, 500
 
-
 class SearchAPI(Resource):
     def get(self):
         query = request.args.get("query")
+
         if not query:
             return {"message": "Query parameter is required"}, 400
 
-        # Fetch documents from the database
-        documents = list(collection.find({}, {"_id": 1, "text": 1, "filename": 1}))  # Include filename
-        results = []
+        try:
+            results = perform_search(query, collection)
+            return jsonify(results)
+        except Exception as e:
+            return {"message": f"Error in search: {str(e)}"}, 500
 
-        # Loop through each document
-        for doc in documents:
-            doc_id = doc["_id"]
-            filename = doc["filename"]
-            text = doc["text"]
 
-            # Split the document text into lines
-            lines = text.split("\n")
-            relevant_lines = []
+class ImageProcessingAPI(Resource):
+    def post(self):
+        if 'file' not in request.files:
+            return {"message": "No file provided"}, 400
+        file = request.files['file']
+        if file.filename == '':
+            return {"message": "No selected file"}, 400
 
-            # Encode the query
-            query_embedding = model.encode(query)
+        filename = secure_filename(file.filename)
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(file_path)
 
-            # Check each line for relevance
-            for line in lines:
-                if query.lower() in line.lower():  # Direct match
-                    relevant_lines.append(line)
-                else:  # Semantic similarity
-                    line_embedding = model.encode(line)
-                    similarity = util.cos_sim(query_embedding, line_embedding).item()
-                    if similarity > 0.6:  # Adjust threshold as needed
-                        relevant_lines.append(line)
+        try:
+            result = process_image(file_path)
+            return {"message": "Image processed successfully", "result": result}, 200
+        except Exception as e:
+            return {"message": f"Error processing image: {str(e)}"}, 500
 
-                if len(relevant_lines) >= 5:  # Limit to 5 lines
-                    break
 
-            # Add the result if relevant lines are found
-            if relevant_lines:
-                results.append({
-                    "doc_id": doc_id,
-                    "filename": filename,
-                    "relevant_text": "\n".join(relevant_lines)
-                })
+class GenerateEmbeddingsAPI(Resource):
+    def post(self):
+        # Get the doc_id from the form data
+        doc_id = request.form.get("doc_id")
+        if not doc_id:
+            return {"message": "Document ID is required"}, 400
 
-        # Return the results
-        return jsonify(results)
+        # Fetch the document from the MongoDB collection using doc_id
+        document = collection.find_one({"_id": doc_id})
+        if not document:
+            return {"message": "Document not found"}, 404
 
-# Register endpoints
+        # Now pass the doc_id and collection to generate_embeddings function
+        try:
+            # Call the generate_embeddings function with the correct parameters
+            result = generate_embeddings(doc_id, collection)
+            return {"message": "Embeddings generated successfully", "result": result}, 200
+        except Exception as e:
+            return {"message": f"Error generating embeddings: {str(e)}"}, 500
+
+# Register API resources
 api.add_resource(UploadAPI, "/upload")
 api.add_resource(SearchAPI, "/search")
+api.add_resource(ImageProcessingAPI, "/image-processing")
+api.add_resource(GenerateEmbeddingsAPI, "/generate-embeddings")
 
 if __name__ == "__main__":
     app.run(debug=True)
+
